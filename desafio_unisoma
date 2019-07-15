@@ -1,1 +1,15 @@
 A ideia é criarmos um software que otimize o atendimento da Casa da Criança Paralítica
+
+
+### CRIANÇAS
+
+-> filtrar a disponibilidade das crianças (Dia/Horário)
+-> filtrar o tipo de atendimento necessário (Especialidade)
+-> priorizar atendimentos regulares
+-> checagem do número de visitas durante a semana
+
+### PROFISSIONAIS
+
+-> filtrar a disponibilidade dos profissionais (Dia/Horário)
+-> filtrar tipo de atendimento oferecido (Especialidade)
+-> cruzar informações sobre diferentes tipos de atendimento oferecidos em mesmo dia e período
