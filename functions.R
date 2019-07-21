@@ -49,22 +49,42 @@ by()
 
 
 # SELECIONA APENAS AS  PLANILHAS DOS FUNCIONÁRIOS
-funcionarios <- grep(pattern = "Atendimento", x = nome, value = T, invert = T)
-funcionarios <- grep(pattern = "da Criança", x = nome, value = T, invert = T)
-funcionarios <- funcionarios[-1]
+funcionarios <- names(mysheets)
+funcionarios <- grep(pattern = "Atendimento", x = funcionarios, value = T, invert = T)
+funcionarios <- grep(pattern = "da Criança", x = funcionarios, value = T, invert = T)
+funcionarios <- funcionarios[-1] # REMOVE A PLANILHA AUXILIAR (PERGUNTAR SE ESTA EXISTE APENAS PARA ESSE BD MODELO)
 
-# ECONTRA A TABELA DO PROFISSIONAL DESEJADO (PRECISA SER MELHORADA)
+# ENCONTRA AS TABELAS DA ESPECIALIDADE DESEJADA
 find.speciality <- function(especialidade){
-  for (i in 1:length(funcionarios)) 
-    ifelse (colnames(mysheets[[funcionarios[i]]])[1] == especialidade, return(mysheets[[funcionarios[i]]]), NA)
+  x <- list()
+    for (i in 1:length(funcionarios)){ 
+   ifelse (colnames(mysheets[[funcionarios[i]]])[1] == especialidade, x[[i]] <- mysheets[[funcionarios[i]]], x[[i]] <- NA)}
+  x <- x[!is.na(x)]
+  x
 }
 
-id.crianca <- unique(mysheets[[2]][,1])
+check.speciality <- function(find.speciality) ifelse(length(find.speciality) == 0, print("Não há"), NA)
+
+id.crianca <- unique(mysheets[["Cadastro da Criança"]][,1])
 for (i in 1:length(funcionarios)) {
   aux <- filter(mysheets[[funcionarios[i]]], SEG %in% id.crianca$IDENTIFICAÇÃO)
   if_else(dim(aux) )
   }
 
+check.no.registered <- function(){
+  # VERIFICA SE HÁ CRIANÇAS NÃO CADASTRADAS NA PLANILHA ATENDIMENTO REGULAR
+  verify <- filter(mysheets[['Cadastro da Criança']]['IDENTIFICAÇÃO'], mysheets[['Cadastro da Criança']]['STATUS DE ATENDIMENTO'] != "Legado") %>% right_join(y = mysheets[["Atendimento Regular"]]["IDENTIFICAÇÃO"], "IDENTIFICAÇÃO") 
+  if(length(verify$IDENTIFICAÇÃO) != length(mysheets[["Atendimento Regular"]]$IDENTIFICAÇÃO)){
+    print("Há crianças na planilha Atendimento Regular que não estão cadastradas.")
+  }
+  
+  # VERIFICA SE HÁ CRIANÇAS NÃO CADASTRADAS NA PLANILHA ATENDIMENTO ESPORÁDICO
+  verify <- filter(mysheets[['Cadastro da Criança']]['IDENTIFICAÇÃO'], mysheets[['Cadastro da Criança']]['STATUS DE ATENDIMENTO'] != "Legado") %>% right_join(y = mysheets[["Atendimento Esporádico"]]["IDENTIFICAÇÃO"], "IDENTIFICAÇÃO") 
+  if(length(verify$IDENTIFICAÇÃO) != length(mysheets[["Atendimento Esporádico"]]$IDENTIFICAÇÃO)){
+    print("Há crianças na planilha Atendimento Esporádico que não estão cadastradas.")
+  }
+  
+}
 
 
 
