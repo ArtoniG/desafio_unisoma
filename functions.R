@@ -83,10 +83,36 @@ check.no.registered <- function(){
   if(length(verify$IDENTIFICAÇÃO) != length(mysheets[["Atendimento Esporádico"]]$IDENTIFICAÇÃO)){
     print("Há crianças na planilha Atendimento Esporádico que não estão cadastradas.")
   }
-  
+ 
+
 }
 
 
+  # VERIFICA SE HÁ 2 CRIANÇAS AGENDADAS NO MESMO HORÁRIO COM PROFISSIONAIS DIFERENTES 
+  combn(funcionarios, 2, function(comb){  # APLICA SOBRE TODAS AS COMBINAÇÕES 2 À 2 POSSÍVEIS DE FUNCIONÁRIOS AS VERIFICAÇÕES ABAIXO
+  
+  # VERIFICA SE O 1º OU 2º FUNCIONÁRIO É DA NUTRIÇÃO
+  if_else(condition = colnames(mysheets[[comb[1]]])[1] == "Nutrição" | colnames(mysheets[[comb[2]]])[1] == "Nutrição", 
+    
+        # SE FALSO: COMPARA AS TABELAS VERIFICANDO SE HÁ ALGUMA CRIANÇA AGENDADA NO MESMO HORÁRIO
+        false = if(table((mysheets[[comb[1]]][,1:6] == mysheets[[comb[2]]][,1:6]))["TRUE"] != 18){
+          toString(c("Existe(m) criança(s) agendada(s) no mesmo horário com os profissionais:", comb[1], comb[2]))}, 
+        
+        # SE VERDADEIRO: VERIFICA SE O 1º FUNCIONÁRIO É DA NUTRIÇÃO
+        true = if_else(condition = colnames(mysheets[[comb[1]]])[1] == "Nutrição", 
+                   
+                   # SE VERDADEIRO: COMPARA APENAS A PARTE DA PLANILHA QUE ESTA SENDO PLANEJADA COM A PLANILHA DO 2º FUNCINÁRIO 
+                   true = if(table(mysheets[[comb[1]]][,1:6] == mysheets[[comb[2]]][,1:6])["TRUE"] != 18){
+                      toString(c("Existe(m) criança(s) agendada(s) no mesmo horário com os profissionais:", comb[1], comb[2]))},
+                   
+                   # SE FALSO: COMPARA APENAS A PARTE DA PLANILHA 
+                   false = if(table(mysheets[[comb[1]]][,1:6] == mysheets[[comb[2]]][,1:6])["TRUE"] != 18){
+                      toString(c("Existe(m) criança(s) agendada(s) no mesmo horário com os profissionais:", comb[1], comb[2]))}))
+  }, simplify = F)
 
-
-
+  # VERIFICA SE HÁ 2 CRIANÇAS AGENDADAS NO MESMO HORÁRIO COM PROFISSIONAIS DIFERENTES  (CHECAR PQ 11 SAÍDAS E NÃO 21)
+  verify <- combn(funcionarios, 2, function(comb){
+    if(table(mysheets[[comb[1]]][,1:6] == mysheets[[comb[2]]][,1:6])["TRUE"] != 18){
+              toString(c("Existe(m) criança(s) agendada(s) no mesmo horário com os profissionais:", comb[1], comb[2]))}} , simplify = F)
+ 
+  
