@@ -29,17 +29,18 @@ shinyApp(ui, server)
 
 
 #MODELAGEM
-numcri = 4 #numero de criancas
-numesp = 1 #quantidade de especialidades
+numcri = 10 #numero de criancas
+numesp = 2 #quantidade de especialidades
 numfuncio = 1 #numero de funcionarios (especialidade que possui mais funcionarios)
 numdia = 3 #numero de dias de trabalho na semana
-numper = 1 #divisoes em periodos do dia (manha e tarde)
+numper = 2 #divisoes em periodos do dia (manha e tarde)
 numhor = 3 #quantos horarios existe em cada periodo (o periodo com maior quantidade de horarios)
 
 AtSem <- matrix(data = 1, nrow = numcri, ncol = numesp) #matriz de quantidde de atendimento semanal da crianca i na esp e
-AtSem[1,1] = 3
+AtSem[1,1] = 2
+AtSem[1,2] = 2
 AtSem[2,1] = 2
-AtSem[3,1] = 3
+AtSem[3,1] = 2
 
 lambda = 1 #peso da preferencia que minimiza o numero de viagens das criancas até a ONG
 #lambda*sum_expr(sum_expr(x[cri, esp, funcio, dia, per, hor], funcio=1:numfuncio, per=1:numper, hor=1:numhor) - AtSem[cri,esp] - sum_expr(x[cri, esp, funcio, dia1, per, hor], funcio=1:numfuncio, dia1=1:numdia, dia1 != dia, per=1:numper, hor=1:numhor), cri=1:numcri, esp=1:numesp, dia=1:numdia)+
@@ -64,9 +65,14 @@ model <- MIPModel() %>%
   add_constraint(sum_expr(x[cri, esp, funcio, dia, per, hor], funcio=1:numfuncio, dia=1:numdia, per=1:numper, hor=1:numhor) <= AtSem[cri,esp], cri=1:numcri, esp=1:numesp) %>%
   
   #O atendimento da crianca não deve ocorrer em dias da semana consecutivos
-  #add_constraint(sum_expr(x[cri, esp, funcio, dia, per, hor]/sum_expr(AtSem[cri,esp], esp=1:numesp), funcio=1:numfuncio, esp=1:numesp, per=1:numper, hor=1:numhor)<=1-sum_expr(x[cri, esp, funcio, dia1, per, hor]/sum_expr(AtSem[cri,esp], esp=1:numesp), dia1=dia+1, funcio=1:numfuncio, esp=1:numesp, per=1:numper, hor=1:numhor), cri=1:numcri, dia=1:(numdia-1)) %>%
-  add_constraint(x[cri, esp, funcio, dia, per, hor] <= 1 - x[cri, esp1, funcio1, (dia+1), per1, hor1],cri=1:numcri, esp=1:numesp, funcio=1:numfuncio, dia=1:(numdia-1), per=1:numper, hor=1:numhor,cri1=1:numcri, esp1=1:numesp, funcio1=1:numfuncio, per1=1:numper, hor1=1:numhor) %>%
+  add_constraint(x[cri, esp, funcio, dia, per, hor] <= 1 - x[cri, esp1, funcio1, (dia+1), per1, hor1],cri=1:numcri, esp=1:numesp, funcio=1:numfuncio, dia=1:(numdia-1), per=1:numper, hor=1:numhor, esp1=1:numesp, funcio1=1:numfuncio, per1=1:numper, hor1=1:numhor) %>%
 
+  #O atendimento, quando realizado, é feito e um único periodo
+  add_constraint(x[cri, esp, funcio, dia, per, hor]<=1-x[cri, esp1, funcio1, dia, (per+1), hor1], cri=1:numcri, esp=1:numesp, funcio=1:numfuncio, dia=1:numdia, per=1:(numper-1), hor=1:numhor, esp1=1:numesp, funcio1=1:numfuncio, hor1=1:numhor) %>%
+
+  #Nao e possivel fazer dois agendamentos consecutivos na mesma especialidade
+  add_constraint(sum_expr(x[cri, esp, funcio, dia, per, hor], funcio=1:numfuncio, hor=1:numhor)<=1 , cri=1:numcri, esp=1:numesp, dia=1:numdia, per=1:numper) %>%
+    
   #usar o pacote lpsolve para resolver o problema
   solve_model(with_ROI(solver = "lpsolve"))
 #guarda a solucao encontrada no objeto sol
