@@ -1,8 +1,18 @@
-library(shiny)
-library(readxl)
+library(shiny) #pacote de visualizacao UI
 library(Rcpp)
 library(sqldf)
-library(lpsolve)
+library(readxl) #pacote de leitura arquivos excel
+library(dplyr) #pacote para manipulação de dados 
+library(tidyr) #pacote com estrutura de dados
+library(lubridate) #pacote para trabalhar com datas e horarios
+library(ompr) #pacote de modelagem algebrica
+library(ompr.roi) #pacote para conectar modelagem ao solver
+library(ROI) #pacote para conectar modelagem ao solver
+library(ROI.plugin.lpsolve) #pacote para conectar modelagem ao solver
+library(lpSolve) #pacote com solver de programação linear inteira
+library(rmarkdown) #pacote para exportar
+library(magrittr)
+
 CCP <- read_xlsx("~/Downloads/Modelo de Dados_CCP_v1.xlsx",col_names = T)
 
 ui <- pageWithSidebar(headerPanel("CCP Project"), 
@@ -16,3 +26,49 @@ server <-  function(input, output){
 }
 
 shinyApp(ui, server)
+
+
+#MODELAGEM
+numcri = 4 #numero de criancas
+numesp = 1 #quantidade de especialidades
+numfuncio = 1 #numero de funcionarios (especialidade que possui mais funcionarios)
+numdia = 3 #numero de dias de trabalho na semana
+numper = 1 #divisoes em periodos do dia (manha e tarde)
+numhor = 3 #quantos horarios existe em cada periodo (o periodo com maior quantidade de horarios)
+
+AtSem <- matrix(data = 1, nrow = numcri, ncol = numesp) #matriz de quantidde de atendimento semanal da crianca i na esp e
+AtSem[1,1] = 3
+AtSem[2,1] = 2
+AtSem[3,1] = 3
+
+lambda = 1 #peso da preferencia que minimiza o numero de viagens das criancas até a ONG
+#lambda*sum_expr(sum_expr(x[cri, esp, funcio, dia, per, hor], funcio=1:numfuncio, per=1:numper, hor=1:numhor) - AtSem[cri,esp] - sum_expr(x[cri, esp, funcio, dia1, per, hor], funcio=1:numfuncio, dia1=1:numdia, dia1 != dia, per=1:numper, hor=1:numhor), cri=1:numcri, esp=1:numesp, dia=1:numdia)+
+
+#   set_bounds(x[i, e, j, d, p, k], lb = 1) %>% #adicionar condicoes para zerar
+#   set_bounds(x[i, e, j, d, p, k], ub = 0) %>% #adicionar condicoes para ser 1
+
+#cria um modelo
+model <- MIPModel() %>%
+  #adiciona variaveis
+  add_variable(x[cri, esp, funcio, dia, per, hor], cri=1:numcri, esp=1:numesp, funcio=1:numfuncio, dia=1:numdia, per=1:numper, hor=1:numhor, type = "binary") %>%
+  #adiciona uma funcao objetivo
+  set_objective(sum_expr(x[cri, esp, funcio, dia, per, hor], cri=1:numcri, esp=1:numesp, funcio=1:numfuncio, dia=1:numdia, per=1:numper, hor=1:numhor),"max") %>%
+
+  #adiciona a restricao de um medico por crianca
+  add_constraint(sum_expr(x[cri, esp, funcio, dia, per, hor], funcio=1:numfuncio)<=1, cri=1:numcri, esp=1:numesp, dia=1:numdia, per=1:numper, hor=1:numhor) %>%
+  
+  #adiciona a restricao de uma crianca por medico
+  add_constraint(sum_expr(x[cri, esp, funcio, dia, per, hor], cri=1:numcri)<=1, esp=1:numesp, funcio=1:numfuncio, dia=1:numdia, per=1:numper, hor=1:numhor) %>%
+  
+  #adiciona a restricao da quantidade de atendimento semanal da crianca
+  add_constraint(sum_expr(x[cri, esp, funcio, dia, per, hor], funcio=1:numfuncio, dia=1:numdia, per=1:numper, hor=1:numhor) <= AtSem[cri,esp], cri=1:numcri, esp=1:numesp) %>%
+  
+  #O atendimento da crianca não deve ocorrer em dias da semana consecutivos
+  #add_constraint(sum_expr(x[cri, esp, funcio, dia, per, hor]/sum_expr(AtSem[cri,esp], esp=1:numesp), funcio=1:numfuncio, esp=1:numesp, per=1:numper, hor=1:numhor)<=1-sum_expr(x[cri, esp, funcio, dia1, per, hor]/sum_expr(AtSem[cri,esp], esp=1:numesp), dia1=dia+1, funcio=1:numfuncio, esp=1:numesp, per=1:numper, hor=1:numhor), cri=1:numcri, dia=1:(numdia-1)) %>%
+  add_constraint(x[cri, esp, funcio, dia, per, hor] <= 1 - x[cri, esp1, funcio1, (dia+1), per1, hor1],cri=1:numcri, esp=1:numesp, funcio=1:numfuncio, dia=1:(numdia-1), per=1:numper, hor=1:numhor,cri1=1:numcri, esp1=1:numesp, funcio1=1:numfuncio, per1=1:numper, hor1=1:numhor) %>%
+
+  #usar o pacote lpsolve para resolver o problema
+  solve_model(with_ROI(solver = "lpsolve"))
+#guarda a solucao encontrada no objeto sol
+sol <- get_solution(model, x[cri, esp, funcio, dia, per, hor])
+
