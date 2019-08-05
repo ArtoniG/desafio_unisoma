@@ -51,10 +51,10 @@ by()
 
 
 # SELECIONA APENAS AS  PLANILHAS DOS FUNCIONÁRIOS
-funcionarios <- names(mysheets)
-funcionarios <- grep(pattern = "Atendimento", x = funcionarios, value = T, invert = T)
-funcionarios <- grep(pattern = "da Criança", x = funcionarios, value = T, invert = T)
-funcionarios <- grep(pattern = "Auxiliar", x = funcionarios, value = T, invert = T)
+funcionarios <- names(mysheets) %>% 
+  grep(pattern = "Atendimento", value = T, invert = T) %>% 
+  grep(pattern = "da Criança", value = T, invert = T) %>% 
+  grep(pattern = "Auxiliar", value = T, invert = T)
 
 # ENCONTRA AS TABELAS DA ESPECIALIDADE DESEJADA
 find.speciality <- function(especialidade){
@@ -68,9 +68,8 @@ find.speciality <- function(especialidade){
 
 # SUBSTITUI OS VALORES DOS HORÁRIOS NAS PLANILHAS
 #sapply(funcionarios, function(professional.speech){
-# mysheets[[professional.speech]][[1]] <- hms(minutes = minute(mysheets[[professional.speech]][[1]]), hours = hour(mysheets[[professional.speech]][[1]]))
+# mysheets[[professional.speech]][[1]][[1]] <- hms(minutes = minute(mysheets[[professional.speech]][[1]][[1]]), hours = hour(mysheets[[professional.speech]][[1]][[1]]))
 #})
-
 
 
 
@@ -135,32 +134,86 @@ check.no.registered <- function(){
  
 
 # RETORNA PARA CADA FUNCIONÁRIO OS DIAS DA SEMANA EM QUE HÁ ATENDIMENTO CADASTRADO DE FORMA CATEGORIZADA SEG-1, TER-2, QUA-3, QUI-4 e SEX-5
-dias.da.semana <- function(funcionarios){
-  sapply(funcionarios, function(funci){
-    data <- c(funci)
-    week <- c()
-    ifelse (which(!is.na(mysheets[[data]][,2:6])) >= 1 & which(!is.na(mysheets[[data]][,2:6])) <= 19,  week <- c(week, 1),                      # SEGUNDA
-            ifelse(which(!is.na(mysheets[[data]][,2:6])) >= 20 & which(!is.na(mysheets[[data]][,2:6])) <= 38, week <- c(week, 2),               # TERÇA
-                   ifelse(which(!is.na(mysheets[[data]][,2:6])) >= 39 & which(!is.na(mysheets[[data]][,2:6])) <= 57, week <- c(week, 3),        # QUARTA
-                          ifelse(which(!is.na(mysheets[[data]][,2:6])) >= 58 & which(!is.na(mysheets[[data]][,2:6])) <= 76, week <- c(week, 4), # QUINTA
-                                 week <- c(week, 5)))))                                                                                         # SEXTA
-  }, USE.NAMES = T)  
-}
+#dias.da.semana <- function(funcionarios){
+#  sapply(funcionarios, function(funci){
+#    data <- c(funci)
+#    week <- c()
+#    ifelse (which(!is.na(mysheets[[data]][,2:6])) >= 1 & which(!is.na(mysheets[[data]][,2:6])) <= 19,  week <- c(week, 1),                      # SEGUNDA
+#            ifelse(which(!is.na(mysheets[[data]][,2:6])) >= 20 & which(!is.na(mysheets[[data]][,2:6])) <= 38, week <- c(week, 2),               # TERÇA
+#                   ifelse(which(!is.na(mysheets[[data]][,2:6])) >= 39 & which(!is.na(mysheets[[data]][,2:6])) <= 57, week <- c(week, 3),        # QUARTA
+#                          ifelse(which(!is.na(mysheets[[data]][,2:6])) >= 58 & which(!is.na(mysheets[[data]][,2:6])) <= 76, week <- c(week, 4), # QUINTA
+#                                 week <- c(week, 5)))))                                                                                         # SEXTA
+#  }, USE.NAMES = T)  
+#}
 
-horarios.atend <- function(funcionarios){
-  semana <- dias.da.semana(funcionarios)
-  horarios <- list()
-  for(i in seq_along(semana)){
-    if(length(semana[[i]]) > 0){
-      dias <- unique(semana[[i]])
-      sapply(dias, function(j){
-        horarios[[funcionarios[i]]] <<- which(!is.na(mysheets[[funcionarios[i]]][[dias[j]+1]]))
-      })
-    }
-  }
-  return(horarios)
-}
+#horarios.atend <- function(funcionarios){
+#  semana <- dias.da.semana(funcionarios)
+#  horarios <- list()
+#  for(i in seq_along(semana)){
+#    if(length(semana[[i]]) > 0){
+#      dias <- unique(semana[[i]])
+#      sapply(dias, function(j){
+#        horarios[[funcionarios[i]]] <<- which(!is.na(mysheets[[funcionarios[i]]][[dias[j]+1]]))
+#      })
+#    }
+#  }
+#  return(horarios)
+#}
 
+# PROFISSÃO DE CADA PROFISSIONAL
+speciality <- mysheets[funcionarios] %>% map(~ colnames(.x)[1])
 
-              
+# OS DIAS AGENDADOS
+hour.seg <- mysheets[funcionarios] %>% map(~ which(!is.na(.$SEG)))
+hour.ter <- mysheets[funcionarios] %>% map(~ which(!is.na(.$TER)))
+hour.qua <- mysheets[funcionarios] %>% map(~ which(!is.na(.$QUA)))
+hour.qui <- mysheets[funcionarios] %>% map(~ which(!is.na(.$QUI)))
+hour.sex <- mysheets[funcionarios] %>% map(~ which(!is.na(.$SEX)))
 
+# OS PERÍODOS AGENDADOS 
+per.seg <- seg %>% map(~ ifelse(test = .x <= 9 & .x>= 1, yes = periodo <- 1, no = periodo <- 2))
+per.ter <- ter %>% map(~ ifelse(test = .x <= 9 & .x>= 1, yes = periodo <- 1, no = periodo <- 2))
+per.qua <- qua %>% map(~ ifelse(test = .x <= 9 & .x>= 1, yes = periodo <- 1, no = periodo <- 2))
+per.qui <- qui %>% map(~ ifelse(test = .x <= 9 & .x>= 1, yes = periodo <- 1, no = periodo <- 2))
+per.sex <- sex %>% map(~ ifelse(test = .x <= 9 & .x>= 1, yes = periodo <- 1, no = periodo <- 2))
+
+# QUEM JÁ ESTÁ AGENDADO
+who.seg <- mysheets[funcionarios] %>% map(~ .$SEG[!is.na(.$SEG)])
+who.ter <- mysheets[funcionarios] %>% map(~ .$TER[!is.na(.$TER)])
+who.qua <- mysheets[funcionarios] %>% map(~ .$QUA[!is.na(.$QUA)])
+who.qui <- mysheets[funcionarios] %>% map(~ .$QUI[!is.na(.$QUI)])
+who.sex <- mysheets[funcionarios] %>% map(~ .$SEX[!is.na(.$SEX)])
+
+# LOCALIZAÇÃO DOS HORÁRIOS INDISPONÍVEIS
+indisp.seg <- who.seg %>% map(~ which(str_detect(.x, "Indispon")))
+indisp.ter <- who.ter %>% map(~ which(str_detect(.x, "Indispon")))
+indisp.qua <- who.qua %>% map(~ which(str_detect(.x, "Indispon")))
+indisp.qui <- who.qui %>% map(~ which(str_detect(.x, "Indispon")))
+indisp.sex <- who.sex %>% map(~ which(str_detect(.x, "Indispon")))
+
+# ARMAZENA TODAS AS INFORMAÇÕES EM UM ÚNICO OBJETO
+seg <- tibble(hour.seg, per.seg, who.seg, indisp.seg) %>% 
+  pmap(~ cbind(..1, ..2, ..3, ..4)) 
+ter <- tibble(hour.ter, per.ter, who.ter, indisp.ter) %>% 
+  pmap(~ cbind(..1, ..2, ..3, ..4))
+qua <- tibble(hour.qua, per.qua, who.qua, indisp.qua) %>% 
+  pmap(~ cbind(..1, ..2, ..3, ..4))
+qui <- tibble(hour.qui, per.qui, who.qui, indisp.qui) %>% 
+  pmap(~ cbind(..1, ..2, ..3, ..4))
+sex <- tibble(hour.sex, per.sex, who.sex, indisp.sex) %>% 
+  pmap(~ cbind(..1, ..2, ..3, ..4))
+
+child <- pwalk(list(who.seg, who.ter, who.qua, who.qui, who.sex), ~ unique)
+  
+child <- pwalk(child, ~ pwalk(~unlist))
+
+aux <- c()
+children <- sapply(seq_along(funcionarios), function(i){
+  aux <- unique(c(aux, unlist(who.seg[[funcionarios[i]]]), unlist(who.ter[[funcionarios[i]]]), unlist(who.qua[[funcionarios[i]]]), unlist(who.qui[[funcionarios[i]]]), unlist(who.sex[[funcionarios[i]]])))
+}, simplify = T)
+
+aux <- c()
+ch <- sapply(seq_along(children), function(func){
+  aux <- c(aux, children[[func]])
+}, simplify = T)
+ 
