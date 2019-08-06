@@ -1,0 +1,230 @@
+### Equipe Devir - Agenda CCP - Desafio Unisoma
+
+#library(sqldf)
+#library(dplyr)
+library(readxl)
+#library(Rcpp)
+#library(timevis)
+#library(lubridate)
+library(tidyverse)
+#library(stringr)
+#library(hms)
+
+library(shiny)
+library(shinyjs)
+library(shinyWidgets)
+library(shinythemes) # adicionando o shinythemese package
+library(ggplot2)
+library(DT)
+
+library(Rcpp)
+library(pillar)
+install.packages("")
+
+
+
+ui <- fluidPage(theme = shinytheme("yeti")) # definição do tema de cores e fontes
+
+  if (interactive()) {
+ 
+    shinyApp(
+    ui = fluidPage(
+     
+      # shinythemes::themeSelector(), # para escolher o tema preferido
+      
+    navbarPage("Casa da Criança Paralítica de Campinas",
+      tabPanel("inserir arquivo", 
+               titlePanel(strong("Bem vindo!")),  
+               tags$br(),
+                fileInput("fileSemana", "Selecione o arquivo da semana",
+                         multiple = FALSE,
+                         width = "300px",
+                         accept = c(".xlsx", # quais formatos são aceitos????
+                                    ".xls",
+                                    ".xms"),
+                         buttonLabel = icon("search"),
+                         placeholder = "Click no botão ao lado"),
+               dateInput('dataSegunda',
+                         label = paste('Selecione o primeiro dia da semana a ser planejada'),
+                         value = as.character(Sys.Date()),
+                         min = Sys.Date(),
+                         format = "dd/mm/yy",
+                         startview = 'year', language = 'pt', weekstart = 1
+               ),
+               
+               #withBusyIndicatorUI(
+                 actionButton(
+                   "uploadFilesBtn",
+                   "Confirmar arquivo e data",
+                   class = "btn-primary"
+                 )
+               #)
+               
+                ),
+          
+        
+        
+      tabPanel("ver agenda",
+      sidebarPanel(
+        
+        titlePanel(strong("AGENDA")),
+        
+        withTags(
+          div(
+            hr(),
+            h3("Crianças"),
+            p(),  
+            actionButton("action", "ver todas as cadastradas", width = "200px"),
+            p(),
+            actionButton("action", "adicionar uma nova", width = "200px"),
+            p(),
+            searchInput(
+              inputId = "crianca", label = "buscar:",
+              placeholder = "identificação",
+              btnSearch = icon("search"),
+              btnReset = icon("remove"),
+              width = "200px"
+              ),
+
+            hr(),
+            h3("Profissionais"),
+            p(),  
+            actionButton("action", "Fisioterapia", width = "200px"),
+            p(),  
+            actionButton("action", "Nutricão", width = "200px"),
+            p(),  
+            actionButton("action", "Neurologia", width = "200px"),
+            p(),  
+            actionButton("action", "Pediatria", width = "200px"),
+            br(),
+            hr(),
+            actionButton(
+              "otimizarBtn",
+              titlePanel(icon("accessible-icon")),
+              class = "btn-primary"
+            ),
+            
+            #withBusyIndicatorUI(
+            actionButton(
+              "saveFilesBtn",
+              "salvar planejamento",
+              class = "btn-primary"
+            )
+            #)
+            
+            
+          )
+        )
+        
+        
+      ),
+      mainPanel(
+        tabsetPanel(
+          tabPanel("Data",
+                   verbatimTextOutput("dataSegunda")),
+          
+          tabPanel("Criança Cadastrada",
+                   verbatimTextOutput(outputId = "res"),
+                 
+                   downloadButton(outputId = "mydownload", label = "Download") # ver conexão com o server
+                  
+                   
+                   ),
+          
+          tabPanel("Teste tabela",
+                   verbatimTextOutput(outputId ="contents"))
+          
+        )
+      )
+    ))
+    ),
+   
+    
+    
+     server <- function(input, output, session) {
+     
+       output$contents <- renderTable({
+         inFile <- input$fileSemana
+         
+         if(is.null(inFile))
+           return(NULL)
+         file.rename(inFile$datapath,
+                     paste(inFile$datapath, ".xlsx", sep=""))
+         read_xlsx(paste(inFile$datapath, ".xlsx", sep=""), sheet = 2)
+         #read_excel_allsheets(paste(inFile$datapath, ".xlsx", sep=""))
+         #readxl::read_excel(paste(inFile$datapath, ".xlsx", sep=""), 1)
+       })
+       
+       output$res <- renderPrint({
+        input$crianca
+      })
+     
+       output$dataSegunda <- renderText({
+        paste("A semana planejada começa no dia", as.character(input$dataSegunda))
+      })
+       
+       
+       output$mydownload <- downloadHandler ( ### exemplo >>> tem q tornar pdf
+         filename = "plotextract.csv",
+         content = function(file) {
+           write.csv(diam(), file)})
+     
+    }
+  )
+  
+
+                }
+  shinyApp(ui=ui,server=server)
+  
+  
+  
+  
+######## botão carregar/ok/erro
+  
+  library(shiny)
+  
+  source("helpers.R") # Load all the code needed to show feedback on a button click
+  
+  ui <- fluidPage(
+    selectInput("select", "Select an option",
+                c("This one is okay" = "ok",
+                  "This will give an error" = "error")),
+    
+    # Wrap the button in the function `withBusyIndicatorUI()`
+    withBusyIndicatorUI(
+      actionButton(
+        "uploadFilesBtn",
+        "Process data",
+        class = "btn-primary"
+      )
+    )
+  )
+  
+  server <- function(input, output, session) {
+    observeEvent(input$uploadFilesBtn, {
+      # When the button is clicked, wrap the code in a call to `withBusyIndicatorServer()`
+      withBusyIndicatorServer("uploadFilesBtn", {
+        Sys.sleep(1)
+        if (input$select == "error") {
+          stop("Arquivo inválido")
+        }
+      })
+    })
+  }
+  
+  shinyApp(ui = ui, server = server)
+  
+#####################
+  
+  # IMPORTAÇÃO DOS DADOS
+  read_excel_allsheets <- function(filename, tibble = T) {
+    sheets <- readxl::excel_sheets(filename)
+    x <- lapply(sheets, function(X) readxl::read_excel(filename, sheet = X))
+    if(!tibble) x <- lapply(x, as.data.frame)
+    names(x) <- sheets
+    x
+  }
+  
+  mysheets <- read_excel_allsheets("C:/Users/barba/Downloads/Modelo de Dados_CCP_v1.xlsx")
+
+
