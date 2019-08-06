@@ -21,33 +21,33 @@ read_excel_allsheets <- function(filename, tibble = T) {
 mysheets <- read_excel_allsheets("~/Downloads/Modelo de Dados_CCP_v1.xlsx")
 
 # TODOS OS HORÁRIOS QUE A CLÍNICA OFERECE ATENDIMENTO
-horario <- select(auxiliar, "HORÁRIO DE ATENDIMENTO")
-horario <- hour(horario$`HORÁRIO DE ATENDIMENTO`) + minute(horario$`HORÁRIO DE ATENDIMENTO`)/60 # ALTERA O FORMATO DAS HORAS PARA A VARIÁVEL 'HORA FINAL'
+#horario <- select(auxiliar, "HORÁRIO DE ATENDIMENTO")
+#horario <- hour(horario$`HORÁRIO DE ATENDIMENTO`) + minute(horario$`HORÁRIO DE ATENDIMENTO`)/60 # ALTERA O FORMATO DAS HORAS PARA A VARIÁVEL 'HORA FINAL'
 
 # IDENTIFICAÇÃO DE TODAS AS CRIANÇAS
-id.crianca <- unique(disponibilidade$IDENTIFICAÇÃO) 
+#id.crianca <- unique(disponibilidade$IDENTIFICAÇÃO) 
 
 # SELECIONA OS REGULARES
-id.crianca <- unique(regular$IDENTIFICAÇÃO) 
-id.crianca <- as_tibble(id.crianca) # CONVERTE PARA TIBBLE
-colnames(id.crianca) <- "IDENTIFICAÇÃO" # NOMEA A VARIÁVEL
+#id.crianca <- unique(regular$IDENTIFICAÇÃO) 
+#id.crianca <- as_tibble(id.crianca) # CONVERTE PARA TIBBLE
+#colnames(id.crianca) <- "IDENTIFICAÇÃO" # NOMEA A VARIÁVEL
 
 # SELECIONA OS REGULARES COM DISPONIBILIDADE APENAS DE UM HORÁRIO ESPECÍFICO
-prioridade <- filter(disponibilidade, disponibilidade$PERÍODO == "Horário") %>% right_join(y = id.crianca, by = "IDENTIFICAÇÃO", copy = F) 
-prioridade <- prioridade[complete.cases(prioridade),] # SELECIONA APENAS OS DADOS DE INTERESSE (REMOVE OS NA's)
-prioridade$`HORA INICIAL` <- hour(prioridade$`HORA INICIAL`) + minute(prioridade$`HORA INICIAL`)/60 # ALTERA O FORMATO DAS HORAS PARA A VARIÁVEL 'HORA INICIAL'
-prioridade$`HORA FINAL` <- hour(prioridade$`HORA FINAL`) + minute(prioridade$`HORA FINAL`)/60 # ALTERA O FORMATO DAS HORAS PARA A VARIÁVEL 'HORA FINAL'
+#prioridade <- filter(disponibilidade, disponibilidade$PERÍODO == "Horário") %>% right_join(y = id.crianca, by = "IDENTIFICAÇÃO", copy = F) 
+#prioridade <- prioridade[complete.cases(prioridade),] # SELECIONA APENAS OS DADOS DE INTERESSE (REMOVE OS NA's)
+#prioridade$`HORA INICIAL` <- hour(prioridade$`HORA INICIAL`) + minute(prioridade$`HORA INICIAL`)/60 # ALTERA O FORMATO DAS HORAS PARA A VARIÁVEL 'HORA INICIAL'
+#prioridade$`HORA FINAL` <- hour(prioridade$`HORA FINAL`) + minute(prioridade$`HORA FINAL`)/60 # ALTERA O FORMATO DAS HORAS PARA A VARIÁVEL 'HORA FINAL'
 
 
 # SELECIONA OS PRIORITÁRIOS (REGULARES C/ HORÁRIOS RESTRITOS)
-id.crianca <- unique(prioridade$IDENTIFICAÇÃO) 
-id.crianca <- as_tibble(id.crianca) # CONVERTE PARA TIBBLE
-colnames(id.crianca) <- "IDENTIFICAÇÃO" # NOMEA A VARIÁVEL
+#id.crianca <- unique(prioridade$IDENTIFICAÇÃO) 
+#id.crianca <- as_tibble(id.crianca) # CONVERTE PARA TIBBLE
+#colnames(id.crianca) <- "IDENTIFICAÇÃO" # NOMEA A VARIÁVEL
 
 # SELECIONA OS TIPOS DE ATENDIMENTO NECESSÁRIO PARA OS PRIORITÁRIOS
-especialidade <- right_join(regular, id.crianca, "IDENTIFICAÇÃO") 
+#especialidade <- right_join(regular, id.crianca, "IDENTIFICAÇÃO") 
 
-by()
+#by()
 
 
 # SELECIONA APENAS AS  PLANILHAS DOS FUNCIONÁRIOS
@@ -71,22 +71,14 @@ find.speciality <- function(especialidade){
 # mysheets[[professional.speech]][[1]][[1]] <- hms(minutes = minute(mysheets[[professional.speech]][[1]][[1]]), hours = hour(mysheets[[professional.speech]][[1]][[1]]))
 #})
 
+# ARMAZENA A IDENTIFICAÇÃO DE TODAS AS CRIANÇAS CADASTRADAS
+id.crianca.cat <- tibble(id.crianca = sort(unique(mysheets[["Cadastro da Criança"]][,1][[1]])), id.cat = seq_along(sort(unique(mysheets[["Cadastro da Criança"]][,1][[1]]))))
 
 
-
-
-
-
-
-
-
-
-
-id.crianca <- unique(mysheets[["Cadastro da Criança"]][,1])
-for (i in 1:length(funcionarios)) {
-  aux <- filter(mysheets[[funcionarios[i]]], SEG %in% id.crianca$IDENTIFICAÇÃO)
-  if_else(dim(aux) )
-  }
+#for (i in 1:length(funcionarios)) {
+#  aux <- filter(mysheets[[funcionarios[i]]], SEG %in% id.crianca$IDENTIFICAÇÃO)
+#  if_else(dim(aux) )
+#  }
 
 check.no.registered <- function(){
   # VERIFICA SE HÁ CRIANÇAS NÃO CADASTRADAS NA PLANILHA ATENDIMENTO REGULAR
@@ -101,7 +93,6 @@ check.no.registered <- function(){
     print("Há crianças na planilha Atendimento Esporádico que não estão cadastradas.")
   }
  
-
 }
 
 
