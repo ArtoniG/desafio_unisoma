@@ -1,11 +1,8 @@
 # CARREGA OS PACOTES
-library(sqldf)
 library(dplyr)
 library(readxl)
-library(Rcpp)
-library(timevis)
 library(lubridate)
-library(tidyverse)
+library(purrr)
 library(stringr)
 library(hms)
 
@@ -162,11 +159,11 @@ hour.qui <- mysheets[funcionarios] %>% map(~ which(!is.na(.$QUI)))
 hour.sex <- mysheets[funcionarios] %>% map(~ which(!is.na(.$SEX)))
 
 # OS PERÍODOS AGENDADOS 
-per.seg <- seg %>% map(~ ifelse(test = .x <= 9 & .x>= 1, yes = periodo <- 1, no = periodo <- 2))
-per.ter <- ter %>% map(~ ifelse(test = .x <= 9 & .x>= 1, yes = periodo <- 1, no = periodo <- 2))
-per.qua <- qua %>% map(~ ifelse(test = .x <= 9 & .x>= 1, yes = periodo <- 1, no = periodo <- 2))
-per.qui <- qui %>% map(~ ifelse(test = .x <= 9 & .x>= 1, yes = periodo <- 1, no = periodo <- 2))
-per.sex <- sex %>% map(~ ifelse(test = .x <= 9 & .x>= 1, yes = periodo <- 1, no = periodo <- 2))
+per.seg <- hour.seg %>% map(~ ifelse(test = .x <= 9 & .x>= 1, yes = periodo <- 1, no = periodo <- 2))
+per.ter <- hour.ter %>% map(~ ifelse(test = .x <= 9 & .x>= 1, yes = periodo <- 1, no = periodo <- 2))
+per.qua <- hour.qua %>% map(~ ifelse(test = .x <= 9 & .x>= 1, yes = periodo <- 1, no = periodo <- 2))
+per.qui <- hour.qui %>% map(~ ifelse(test = .x <= 9 & .x>= 1, yes = periodo <- 1, no = periodo <- 2))
+per.sex <- hour.sex %>% map(~ ifelse(test = .x <= 9 & .x>= 1, yes = periodo <- 1, no = periodo <- 2))
 
 # QUEM JÁ ESTÁ AGENDADO
 who.seg <- mysheets[funcionarios] %>% map(~ .$SEG[!is.na(.$SEG)])
