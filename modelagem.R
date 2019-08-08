@@ -2,14 +2,14 @@ library(shiny) #pacote de visualizacao UI
 library(Rcpp)
 library(sqldf)
 library(readxl) #pacote de leitura arquivos excel
-library(dplyr) #pacote para manipulação de dados 
+library(dplyr) #pacote para manipulaÃ§Ã£o de dados 
 library(tidyr) #pacote com estrutura de dados
 library(lubridate) #pacote para trabalhar com datas e horarios
 library(ompr) #pacote de modelagem algebrica
 library(ompr.roi) #pacote para conectar modelagem ao solver
 library(ROI) #pacote para conectar modelagem ao solver
 library(ROI.plugin.lpsolve) #pacote para conectar modelagem ao solver
-library(lpSolve) #pacote com solver de programação linear inteira
+library(lpSolve) #pacote com solver de programaÃ§Ã£o linear inteira
 library(rmarkdown) #pacote para exportar
 library(magrittr)
 
@@ -17,7 +17,7 @@ CCP <- read_xlsx("~/Downloads/Modelo de Dados_CCP_v1.xlsx",col_names = T)
 
 ui <- pageWithSidebar(headerPanel("CCP Project"), 
                       sidebarPanel(
-                        selectInput(inputId = "variable", label = "VariÃ¡vel:", choices = c())
+                        selectInput(inputId = "variable", label = "VariÃƒÂ¡vel:", choices = c())
                       ), 
                       mainPanel())
 
@@ -39,7 +39,7 @@ numhor = 2 #quantos horarios existe em cada periodo (o periodo com maior quantid
 AtSem <- matrix(data = 2, nrow = numcri, ncol = numesp) #matriz de quantidde de atendimento semanal da crianca i na esp e
 
 
-#lambda = 0.005 #peso da preferencia que minimiza o numero de viagens das criancas até a ONG
+#lambda = 0.005 #peso da preferencia que minimiza o numero de viagens das criancas atÃ© a ONG
 lambda = 1/(numcri*(numesp*numfuncio)^2*numdia*(numdia-1))
 
 #lambda*sum_expr(1-x[cri, esp, funcio, dia, per, hor]-x[cri, esp1, funcio1, dia1, per1, hor1], cri=1:numcri, esp=1:numesp, funcio=1:numfuncio, dia=1:numdia, per=1:numper, hor=1:numhor, esp1=1:numesp, funcio1=1:numfuncio, dia1=1:numdia, dia1 != dia, per1=1:numper, hor1=1:numhor)+
@@ -53,9 +53,9 @@ lambda = 1/(numcri*(numesp*numfuncio)^2*numdia*(numdia-1))
 
 
 
-#O atendimento da crianca não deve ocorrer em dias da semana consecutivos
+#O atendimento da crianca nÃ£o deve ocorrer em dias da semana consecutivos
 #  add_constraint(x[cri, esp, funcio, dia, per, hor] <= 1 - x[cri, esp1, funcio1, (dia+1), per1, hor1],cri=1:numcri, esp=1:numesp, funcio=1:numfuncio, dia=1:(numdia-1), per=1:numper, hor=1:numhor, esp1=1:numesp, funcio1=1:numfuncio, per1=1:numper, hor1=1:numhor) %>%
-#O atendimento, quando realizado, é feito e um único periodo
+#O atendimento, quando realizado, Ã© feito e um Ãºnico periodo
 #  add_constraint(x[cri, esp, funcio, dia, per, hor] <= 1-x[cri, esp1, funcio1, dia, (per+1), hor1], cri=1:numcri, esp=1:numesp, funcio=1:numfuncio, dia=1:numdia, per=1:(numper-1), hor=1:numhor, esp1=1:numesp, funcio1=1:numfuncio, hor1=1:numhor) %>%
 #Nao e possivel fazer dois agendamentos consecutivos na mesma especialidade
 #  add_constraint(sum_expr(x[cri, esp, funcio, dia, per, hor], funcio=1:numfuncio, hor=1:numhor)<=1 , cri=1:numcri, esp=1:numesp, dia=1:numdia, per=1:numper) %>%
@@ -81,9 +81,9 @@ model <- MIPModel() %>%
   add_constraint(sum_expr(x[cri, esp, funcio, dia, per, hor], esp=1:numesp, cri=1:numcri)<=1, funcio=1:numfuncio, dia=1:numdia, per=1:numper, hor=1:numhor) %>%
   #adiciona a restricao da quantidade de atendimento semanal da crianca
   add_constraint(sum_expr(x[cri, esp, funcio, dia, per, hor], funcio=1:numfuncio, dia=1:numdia, per=1:numper, hor=1:numhor) <= AtSem[cri,esp], cri=1:numcri, esp=1:numesp) %>%
-  #O atendimento, quando realizado, ocorre em um único período e não há atendimentos consecutivos na mesma especialidade
+  #O atendimento, quando realizado, ocorre em um Ãºnico perÃ­odo e nÃ£o hÃ¡ atendimentos consecutivos na mesma especialidade
   add_constraint(sum_expr(x[cri, esp, funcio, dia, per, hor], funcio=1:numfuncio, hor=1:numhor) <= 1 - sum_expr(x[cri, esp1, funcio, dia, (per+1), hor], funcio=1:numfuncio, hor=1:numhor), cri=1:numcri, esp=1:numesp, esp1=1:numesp, dia=1:numdia, per=1:(numper-1)) %>%
-  #O atendimento da crianca não deve ocorrer em dias da semana consecutivos
+  #O atendimento da crianca nÃ£o deve ocorrer em dias da semana consecutivos
   add_constraint(sum_expr(x[cri, esp, funcio, dia, per, hor], funcio=1:numfuncio, hor=1:numhor, per=1:numper) <= 1 - sum_expr(x[cri, esp1, funcio, (dia+1), per, hor], funcio=1:numfuncio, per=1:numper, hor=1:numhor), cri=1:numcri, esp=1:numesp, esp1=1:numesp, dia=1:(numdia-1)) %>%
   #O atendimento da crianca i na especialidade e e feito por apenas um medico
   add_constraint(sum_expr(x[cri, esp, funcio1, dia, per, hor], per=1:numper, hor=1:numhor) <= 1 - sum_expr(x[cri, esp, funcio, dia1, per, hor], per=1:numper, hor=1:numhor), cri=1:numcri, esp=1:numesp, dia=1:numdia, dia1=1:numdia, funcio1=1:numfuncio, funcio=1:numfuncio, funcio != funcio1) %>%
