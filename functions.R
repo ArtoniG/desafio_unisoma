@@ -17,36 +17,6 @@ read_excel_allsheets <- function(filename, tibble = T) {
 
 mysheets <- read_excel_allsheets("~/Downloads/Modelo de Dados_CCP_v1.xlsx")
 
-# TODOS OS HORÁRIOS QUE A CLÍNICA OFERECE ATENDIMENTO
-#horario <- select(auxiliar, "HORÁRIO DE ATENDIMENTO")
-#horario <- hour(horario$`HORÁRIO DE ATENDIMENTO`) + minute(horario$`HORÁRIO DE ATENDIMENTO`)/60 # ALTERA O FORMATO DAS HORAS PARA A VARIÁVEL 'HORA FINAL'
-
-# IDENTIFICAÇÃO DE TODAS AS CRIANÇAS
-#id.crianca <- unique(disponibilidade$IDENTIFICAÇÃO) 
-
-# SELECIONA OS REGULARES
-#id.crianca <- unique(regular$IDENTIFICAÇÃO) 
-#id.crianca <- as_tibble(id.crianca) # CONVERTE PARA TIBBLE
-#colnames(id.crianca) <- "IDENTIFICAÇÃO" # NOMEA A VARIÁVEL
-
-# SELECIONA OS REGULARES COM DISPONIBILIDADE APENAS DE UM HORÁRIO ESPECÍFICO
-#prioridade <- filter(disponibilidade, disponibilidade$PERÍODO == "Horário") %>% right_join(y = id.crianca, by = "IDENTIFICAÇÃO", copy = F) 
-#prioridade <- prioridade[complete.cases(prioridade),] # SELECIONA APENAS OS DADOS DE INTERESSE (REMOVE OS NA's)
-#prioridade$`HORA INICIAL` <- hour(prioridade$`HORA INICIAL`) + minute(prioridade$`HORA INICIAL`)/60 # ALTERA O FORMATO DAS HORAS PARA A VARIÁVEL 'HORA INICIAL'
-#prioridade$`HORA FINAL` <- hour(prioridade$`HORA FINAL`) + minute(prioridade$`HORA FINAL`)/60 # ALTERA O FORMATO DAS HORAS PARA A VARIÁVEL 'HORA FINAL'
-
-
-# SELECIONA OS PRIORITÁRIOS (REGULARES C/ HORÁRIOS RESTRITOS)
-#id.crianca <- unique(prioridade$IDENTIFICAÇÃO) 
-#id.crianca <- as_tibble(id.crianca) # CONVERTE PARA TIBBLE
-#colnames(id.crianca) <- "IDENTIFICAÇÃO" # NOMEA A VARIÁVEL
-
-# SELECIONA OS TIPOS DE ATENDIMENTO NECESSÁRIO PARA OS PRIORITÁRIOS
-#especialidade <- right_join(regular, id.crianca, "IDENTIFICAÇÃO") 
-
-#by()
-
-
 # SELECIONA APENAS AS  PLANILHAS DOS FUNCIONÁRIOS
 funcionarios <- names(mysheets) %>% 
   grep(pattern = "Atendimento", value = T, invert = T) %>% 
@@ -64,9 +34,11 @@ find.speciality <- function(especialidade){
 
 
 # SUBSTITUI OS VALORES DOS HORÁRIOS NAS PLANILHAS
-#sapply(funcionarios, function(professional.speech){
-# mysheets[[professional.speech]][[1]][[1]] <- hms(minutes = minute(mysheets[[professional.speech]][[1]][[1]]), hours = hour(mysheets[[professional.speech]][[1]][[1]]))
-#})
+newtimetable <- function(){
+  sapply(funcionarios, function(professional.speech){
+    mysheets[[professional.speech]][[1]][[1]] <- hms(minutes = minute(mysheets[[professional.speech]][[1]][[1]]), hours = hour(mysheets[[professional.speech]][[1]][[1]]))
+  })  
+}
 
 # ARMAZENA A IDENTIFICAÇÃO DE TODAS AS CRIANÇAS CADASTRADAS
 id.crianca.cat <- tibble(id.crianca = sort(unique(mysheets[["Cadastro da Criança"]][,1][[1]])), id.cat = seq_along(sort(unique(mysheets[["Cadastro da Criança"]][,1][[1]]))))
@@ -205,3 +177,37 @@ ch <- sapply(seq_along(children), function(func){
   aux <- c(aux, children[[func]])
 }, simplify = T)
  
+
+
+
+# RETORNA AS CRIANÇAS QUE ESTÃO AGENDADAS
+registered.children <- function(){
+  children <- c()
+  sapply(funcionarios, function(func){
+    if(length(who.seg[[func]]) != 0){
+      children <<- c(children, who.seg[[func]])
+    }
+    if(length(who.ter[[func]]) != 0){
+      children <<- c(children, who.ter[[func]])
+    }
+    if(length(who.qua[[func]]) != 0){
+      children <<- c(children, who.qua[[func]])
+    }
+    if(length(who.qui[[func]]) != 0){
+      children <<- c(children, who.qui[[func]])
+    }
+    if(length(who.sex[[func]]) != 0){
+      children <<- c(children, who.sex[[func]])
+    }
+  })
+  return(grep(x = unique(children), pattern = "Indispon", value = T, invert = T))
+}
+
+# VERIFICA AS CRIANÇAS AGENDADAS QUE NÃO ESTÃO CADASTRADAS
+realize.child <- function(registered.children.result){
+  if(table(registered.children.result %in%  id.crianca.cat[[1]])["FALSE"] != 0){
+    return(c("As seguintes crianças estão agendadas, mas não estão cadastradas:", test[-which(test %in%  id.crianca.cat[[1]])]))
+  }
+}
+
+
