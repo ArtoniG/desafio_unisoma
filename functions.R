@@ -33,15 +33,15 @@ find.speciality <- function(especialidade){
 }
 
 
-# SUBSTITUI OS VALORES DOS HORÁRIOS NAS PLANILHAS
+# SUBSTITUI OS VALORES DOS HORÁRIOS NAS PLANILHAS (NOT WORKING)
 newtimetable <- function(){
   sapply(funcionarios, function(professional.speech){
-    mysheets[[professional.speech]][[1]][[1]] <- hms(minutes = minute(mysheets[[professional.speech]][[1]][[1]]), hours = hour(mysheets[[professional.speech]][[1]][[1]]))
+    mysheets[[professional.speech]][[1]][[1]] <<- hms(minutes = minute(mysheets[[professional.speech]][[1]][[1]]), hours = hour(mysheets[[professional.speech]][[1]][[1]]))
   })  
 }
 
-# ARMAZENA A IDENTIFICAÇÃO DE TODAS AS CRIANÇAS CADASTRADAS
-id.crianca.cat <- tibble(id.crianca = sort(unique(mysheets[["Cadastro da Criança"]][,1][[1]])), id.cat = seq_along(sort(unique(mysheets[["Cadastro da Criança"]][,1][[1]]))))
+# ARMAZENA A IDENTIFICAÇÃO DE TODAS AS CRIANÇAS CADASTRADAS EM ORDEM ALFABÉTICA 
+id.crianca.cat <- tibble(IDENTIFICAÇÃO = sort(unique(mysheets[["Cadastro da Criança"]][,1][[1]])), IDENTIFICAÇÃO.CAT = seq_along(sort(unique(mysheets[["Cadastro da Criança"]][,1][[1]]))))
 
 
 #for (i in 1:length(funcionarios)) {
@@ -123,6 +123,10 @@ check.no.registered <- function(){
 # PROFISSÃO DE CADA PROFISSIONAL
 speciality <- mysheets[funcionarios] %>% map(~ colnames(.x)[1])
 
+# CATEGORIZA AS ESPECIALIDADES EM ORDEM ALFABÉTICA
+speciality.cat <- as_tibble(cbind(sort(unique(sapply(speciality, "[[", 1))), seq_along(unique(sapply(speciality, "[[", 1)))))
+colnames(speciality.cat) <- c("TIPO DE ATENDIMENTO", "categoria")
+
 # OS DIAS AGENDADOS
 hour.seg <- mysheets[funcionarios] %>% map(~ which(!is.na(.$SEG)))
 hour.ter <- mysheets[funcionarios] %>% map(~ which(!is.na(.$TER)))
@@ -163,23 +167,6 @@ qui <- tibble(hour.qui, per.qui, who.qui, indisp.qui) %>%
 sex <- tibble(hour.sex, per.sex, who.sex, indisp.sex) %>% 
   pmap(~ cbind(..1, ..2, ..3, ..4))
 
-child <- pwalk(list(who.seg, who.ter, who.qua, who.qui, who.sex), ~ unique)
-  
-child <- pwalk(child, ~ pwalk(~unlist))
-
-aux <- c()
-children <- sapply(seq_along(funcionarios), function(i){
-  aux <- unique(c(aux, unlist(who.seg[[funcionarios[i]]]), unlist(who.ter[[funcionarios[i]]]), unlist(who.qua[[funcionarios[i]]]), unlist(who.qui[[funcionarios[i]]]), unlist(who.sex[[funcionarios[i]]])))
-}, simplify = T)
-
-aux <- c()
-ch <- sapply(seq_along(children), function(func){
-  aux <- c(aux, children[[func]])
-}, simplify = T)
- 
-
-
-
 # RETORNA AS CRIANÇAS QUE ESTÃO AGENDADAS
 registered.children <- function(){
   children <- c()
@@ -200,14 +187,50 @@ registered.children <- function(){
       children <<- c(children, who.sex[[func]])
     }
   })
-  return(grep(x = unique(children), pattern = "Indispon", value = T, invert = T))
+  children <- as_tibble(grep(x = unique(children), pattern = "Indispon", value = T, invert = T)) %>% set_names("id.crianca")
+  return(children)
 }
 
 # VERIFICA AS CRIANÇAS AGENDADAS QUE NÃO ESTÃO CADASTRADAS
 realize.child <- function(registered.children.result){
   if(table(registered.children.result %in%  id.crianca.cat[[1]])["FALSE"] != 0){
-    return(c("As seguintes crianças estão agendadas, mas não estão cadastradas:", test[-which(test %in%  id.crianca.cat[[1]])]))
+    return(c("As seguintes crianças estão agendadas, mas não estão cadastradas:", registered.children.result[-which(registered.children.result %in%  id.crianca.cat[[1]])]))
+  }
+}
+
+# CRUZA AS INFORMAÇÕES DAS CRIANÇAS AGENDADAS COM SUAS RESPECTIVAS CATEGORIAS
+id.registered.children <- semi_join(id.crianca.cat, registered.children.result)
+
+needed.and.availability <- function(){
+  regular.children.needed <- filter(mysheets[["Atendimento Regular"]],  `QTD. DE ATENDIMENTO SEMANAL` != 0) %>% semi_join(x = id.crianca.cat)
+  regular.speciality.needed <- semi_join(mysheets[["Atendimento Regular"]]["TIPO DE ATENDIMENTO"], x = speciality.cat["TIPO DE ATENDIMENTO"]) 
+  if(table(unique(mysheets[["Atendimento Regular"]]["TIPO DE ATENDIMENTO"][[1]]) %in% regular.speciality.needed["TIPO DE ATENDIMENTO"][[1]])["FALSE"] != 0){
+    return(c("Não há profissionais atuando na(s) área(s) de:", unique(mysheets[["Atendimento Regular"]]["TIPO DE ATENDIMENTO"][[1]])[!unique(mysheets[["Atendimento Regular"]]["TIPO DE ATENDIMENTO"][[1]]) %in% regular.speciality.needed["TIPO DE ATENDIMENTO"][[1]]]))
   }
 }
 
 
+
+for (i in seq_along(funcionarios)) {
+  if_else(condition = length(who.seg[[i]]) != 0, 
+          true = if_else(condition = length(indisp.seg[[i]]) != 0,
+                         true = sapply(indisp.seg[[i]], function(indice){
+                           cri[indice] <- 0
+                           esp[indice] <- 
+                         }),
+                         false = ),
+          false = )
+}
+filter()
+
+
+
+#as.vector(rbind(1, 2, 3, ...))
+
+
+#FILTRAR NUMERO DE ATENDIMENTO NECESSARIOS NA SEMANA
+#CHECAR SE HÁ ALGUÉM COM DEMANDA QUINZENAL EM UMA ESPECIALIDADE QUE NÃO É NUTRIÇÃO
+#CHECAR SE NUMERO DE ATENDIMENTOS SEMANAIS PARA NUTRIÇÃO > 1
+#CONVERTER OS RESULTADOS DA OTIMIZAÇÃO EM TABELAS
+#CRIAR MODELO DO RELATÓRIO DE SAÍDA
+#PASSAR TODAS AS INFORMAÇÕES DAS AGENDAS DOS FUNCIONÁRIOS PARA O SETBOUNDS
