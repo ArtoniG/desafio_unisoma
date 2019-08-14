@@ -52,19 +52,37 @@ id.crianca.cat <- tibble(IDENTIFICAÇÃO = sort(unique(mysheets[["Cadastro da Cr
 check.no.registered <- function(){
   # VERIFICA SE HÁ CRIANÇAS NÃO CADASTRADAS NA PLANILHA ATENDIMENTO REGULAR
   verify <- filter(mysheets[['Cadastro da Criança']]['IDENTIFICAÇÃO'], mysheets[['Cadastro da Criança']]['STATUS DE ATENDIMENTO'] != "Legado") %>% right_join(y = mysheets[["Atendimento Regular"]]["IDENTIFICAÇÃO"], "IDENTIFICAÇÃO") 
-  if(length(verify$IDENTIFICAÇÃO) != length(mysheets[["Atendimento Regular"]]$IDENTIFICAÇÃO)){
+  if(table(sort(verify$IDENTIFICAÇÃO) == sort(mysheets[["Atendimento Regular"]]$IDENTIFICAÇÃO))['TRUE'] != length(verify$IDENTIFICAÇÃO)){
     print("Há crianças na planilha Atendimento Regular que não estão cadastradas.")
   }
   
   # VERIFICA SE HÁ CRIANÇAS NÃO CADASTRADAS NA PLANILHA ATENDIMENTO ESPORÁDICO
   verify <- filter(mysheets[['Cadastro da Criança']]['IDENTIFICAÇÃO'], mysheets[['Cadastro da Criança']]['STATUS DE ATENDIMENTO'] != "Legado") %>% right_join(y = mysheets[["Atendimento Esporádico"]]["IDENTIFICAÇÃO"], "IDENTIFICAÇÃO") 
-  if(length(verify$IDENTIFICAÇÃO) != length(mysheets[["Atendimento Esporádico"]]$IDENTIFICAÇÃO)){
+  if(table(sort(verify$IDENTIFICAÇÃO) == sort(mysheets[["Atendimento Esporádico"]]$IDENTIFICAÇÃO))['TRUE'] != length(verify$IDENTIFICAÇÃO)){
     print("Há crianças na planilha Atendimento Esporádico que não estão cadastradas.")
   }
- 
+  
+  # VERIFICA SE HÁ CRIANÇAS CADASTRADAS COM IDENTIFICADORES IGUAIS
   if(length(mysheets[['Cadastro da Criança']][['IDENTIFICAÇÃO']]) != length(unique(mysheets[['Cadastro da Criança']][['IDENTIFICAÇÃO']]))){
     print(c("Há crianças cadastradas com identificadores iguais. O número de vezes em que o indentificador aparece representa o número de repetições do mesmo.", mysheets[['Cadastro da Criança']][['IDENTIFICAÇÃO']][duplicated(mysheets[['Cadastro da Criança']][['IDENTIFICAÇÃO']])]))
   }
+  
+  # VERIFICA SE HÁ CRIANÇAS CADASTRADAS COM NECESSIDADE DE ATENDIMENTO QUINZENAL COM FREQUÊNCIA > 1 NA SEMANA 
+  if(nrow(filter(mysheets[["Atendimento Regular"]], `FREQUENCIA DE ATENDIMENTO` == "Quinzenal" & `QTD. DE ATENDIMENTO SEMANAL` > 1)) > 0){
+    print(c("A(s) criança(s) abaixo possue(m) necessidade(s) de atendimento(s) quizenal(is) com frequência maior que uma visita na semana:",
+            unique(filter(mysheets[["Atendimento Regular"]], `FREQUENCIA DE ATENDIMENTO` == "Quinzenal" & `QTD. DE ATENDIMENTO SEMANAL` > 1)[["IDENTIFICAÇÃO"]])))
+  }
+  
+  # VERIFICA SE HÁ CRIANÇAS CADASTRADAS COM NECESSIDADE DE ATENDIMENTO QUINZENAL EM UMA ESPECIALIDADE QUE NÃO É NUTRIÇÃO
+  if(nrow(filter(mysheets[["Atendimento Regular"]], `FREQUENCIA DE ATENDIMENTO` == "Quinzenal" & `TIPO DE ATENDIMENTO` != "Nutrição")) > 0){
+    print(c("A(s) criança(s) abaixo possue(m) necessidade(s) de atendimento(s) quizenal(is) em uma especialidade que não é Nutrição:",
+            unique(filter(mysheets[["Atendimento Regular"]], `FREQUENCIA DE ATENDIMENTO` == "Quinzenal" & `TIPO DE ATENDIMENTO` != "Nutrição")[["IDENTIFICAÇÃO"]])))
+  }
+  
+  # VERIFICA SE HÁ 2 CRIANÇAS AGENDADAS NO MESMO HORÁRIO COM PROFISSIONAIS DIFERENTES  (CHECAR PQ 11 SAÍDAS E NÃO 21)
+  verify <- combn(funcionarios, 2, function(comb){
+    if((table(mysheets[[comb[1]]][,1:6] == mysheets[[comb[2]]][,1:6])["TRUE"]) != 19){
+      return(print(c("Existe(m) criança(s) agendada(s) no mesmo horário com os profissionais:", comb[1], comb[2])))}} , simplify = F)  
 }
 
 
@@ -90,10 +108,7 @@ check.no.registered <- function(){
                       return(print(c("Existe(m) criança(s) agendada(s) no mesmo horário com os profissionais:", comb[1], comb[2])))}))
   }, simplify = F)
 
-  # VERIFICA SE HÁ 2 CRIANÇAS AGENDADAS NO MESMO HORÁRIO COM PROFISSIONAIS DIFERENTES  (CHECAR PQ 11 SAÍDAS E NÃO 21)
-  verify <- combn(funcionarios, 2, function(comb){
-    if((table(mysheets[[comb[1]]][,1:6] == mysheets[[comb[2]]][,1:6])["TRUE"]) != 19){
-              return(print(c("Existe(m) criança(s) agendada(s) no mesmo horário com os profissionais:", comb[1], comb[2])))}} , simplify = F)
+
  
 
 # RETORNA PARA CADA FUNCIONÁRIO OS DIAS DA SEMANA EM QUE HÁ ATENDIMENTO CADASTRADO DE FORMA CATEGORIZADA SEG-1, TER-2, QUA-3, QUI-4 e SEX-5
@@ -126,10 +141,10 @@ check.no.registered <- function(){
 # PROFISSÃO DE CADA PROFISSIONAL
 speciality <- mysheets[funcionarios] %>% map(~ colnames(.x)[1])
 
-# CATEGORIZA AS ESPECIALIDADES EM ORDEM ALFABÉTICA
+# CATEGORIZA AS PROFISSÕES DISPONÍVEIS EM ORDEM ALFABÉTICA
 speciality.cat <- as_tibble(cbind(sort(unique(sapply(speciality, "[[", 1))), seq_along(unique(sapply(speciality, "[[", 1))))) %>% set_names("TIPO DE ATENDIMENTO", "ATENDIMENTO.CAT")
 
-# OS DIAS AGENDADOS
+# OS DIAS E HORÁRIOS JÁ AGENDADOS
 hour.seg <- mysheets[funcionarios] %>% map(~ which(!is.na(.$SEG)))
 hour.ter <- mysheets[funcionarios] %>% map(~ which(!is.na(.$TER)))
 hour.qua <- mysheets[funcionarios] %>% map(~ which(!is.na(.$QUA)))
@@ -207,19 +222,21 @@ id.registered.children <- semi_join(id.crianca.cat, registered.children.result)
 
 needed.and.availability <- function(){
   regular.children.needed <<- filter(mysheets[["Atendimento Regular"]],  `QTD. DE ATENDIMENTO SEMANAL` != 0) %>% semi_join(x = id.crianca.cat)
-  regular.speciality.needed <<- semi_join(mysheets[["Atendimento Regular"]]["TIPO DE ATENDIMENTO"], x = speciality.cat["TIPO DE ATENDIMENTO"]) 
+  
+  regular.speciality.needed <<- semi_join(mysheets[["Atendimento Regular"]]["TIPO DE ATENDIMENTO"], x = speciality.cat) 
   if(table(unique(mysheets[["Atendimento Regular"]]["TIPO DE ATENDIMENTO"][[1]]) %in% regular.speciality.needed["TIPO DE ATENDIMENTO"][[1]])["FALSE"] != 0){
     return(c("Não há profissionais atuando na(s) área(s) de:", unique(mysheets[["Atendimento Regular"]]["TIPO DE ATENDIMENTO"][[1]])[!unique(mysheets[["Atendimento Regular"]]["TIPO DE ATENDIMENTO"][[1]]) %in% regular.speciality.needed["TIPO DE ATENDIMENTO"][[1]]]))
   }
-  biweekly.regular.needed <- filter(mysheets[["Atendimento Regular"]], `FREQUENCIA DE ATENDIMENTO` == "Quinzenal" & `QTD. DE ATENDIMENTO SEMANAL` == 1 & `TIPO DE ATENDIMENTO` == "Nutrição")
-  if(nrow(filter(mysheets[["Atendimento Regular"]], `FREQUENCIA DE ATENDIMENTO` == "Quinzenal" & `QTD. DE ATENDIMENTO SEMANAL` > 1)) > 0){
-    print(c("A(s) criança(s) abaixo possue(m) necessidade(s) de atendimento(s) quizenal(is) com frequência maior que uma visita na semana:",
-            unique(filter(mysheets[["Atendimento Regular"]], `FREQUENCIA DE ATENDIMENTO` == "Quinzenal" & `QTD. DE ATENDIMENTO SEMANAL` > 1)[["IDENTIFICAÇÃO"]])))
+  
+  biweekly.regular.needed <<- filter(mysheets[["Atendimento Regular"]], `FREQUENCIA DE ATENDIMENTO` == "Quinzenal" & `QTD. DE ATENDIMENTO SEMANAL` == 1 & `TIPO DE ATENDIMENTO` == "Nutrição")
+  
+  for (i in seq_along(regular.speciality.needed[[1]])) {
+    weekly.regular.needed <<- filter(mysheets[["Atendimento Regular"]], `FREQUENCIA DE ATENDIMENTO` == "Semanal" & `TIPO DE ATENDIMENTO` == regular.speciality.needed[[1]][i] & `QTD. DE ATENDIMENTO SEMANAL` > 0)
+    if(invisible(table(weekly.regular.needed[["QTD. DE ATENDIMENTO SEMANAL"]] > 3)[TRUE] > 1)){
+      return(c("As crianças abaixo estão cadastradas com necessidade de mais de 3 atendimentos na semana na especialidade:", regular.speciality.needed[[1]][i], 
+              filter(weekly.regular.needed, weekly.regular.needed[["QTD. DE ATENDIMENTO SEMANAL"]] >= 4)[["IDENTIFICAÇÃO"]]))
+    }
   }
-  if(nrow(filter(mysheets[["Atendimento Regular"]], `FREQUENCIA DE ATENDIMENTO` == "Quinzenal" & `TIPO DE ATENDIMENTO` != "Nutrição")) > 0){
-    print(c("A(s) criança(s) abaixo possue(m) necessidade(s) de atendimento(s) quizenal(is) em uma especialidade que não é Nutrição:",
-               unique(filter(mysheets[["Atendimento Regular"]], `FREQUENCIA DE ATENDIMENTO` == "Quinzenal" & `TIPO DE ATENDIMENTO` != "Nutrição")[["IDENTIFICAÇÃO"]])))
-  }  
 }
 
 
